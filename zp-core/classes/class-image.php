@@ -146,10 +146,12 @@ class Image extends MediaObject {
 
 	/**
 	 * Returns true if the object is a zenphoto 'image'
+	 * Note: This method is theme image context sensitive if $album = null and may for the current image!
+	 * Use the method Image::isImageObject() for a context unaware check
 	 * 
 	 * @since 1.6 - Moved to Image class as static method
 	 *
-	 * @param object $image
+	 * @param object $image Object to test
 	 * @return bool
 	 */
 	static function isImageClass($image = NULL) {
@@ -159,7 +161,22 @@ class Image extends MediaObject {
 				return false;
 			$image = $_zp_current_image;
 		}
-		return is_object($image) && ($image->table == 'images');
+		return static::isImageObject($image);
+	}
+		
+	/**
+	 * Checks if $obj is a Zenphoto "image".
+	 * 
+	 * @since 1.6.6 - Added as context unaware alternative to Image::isImageClass()
+	 * 
+	 * @param object $obj Object to test
+	 * @return bool
+	 */
+	static function isImageObject($obj = null) {
+		if (is_null($obj)) {
+			return false;
+		}
+		return is_object($obj) && ($obj->table == 'images');
 	}
 
 	/**
@@ -866,6 +883,17 @@ class Image extends MediaObject {
 	 */
 	function getAlbum() {
 		return $this->album;
+	}
+	
+	/**
+	 * Alias of getAlbum() to align with other classes
+	 * 
+	 * @since 1.6.6
+	 * 
+	 * @return object
+	 */
+	function getParent() {
+		return $this->getAlbum();
 	}
 
 	/**
@@ -1931,29 +1959,7 @@ class Image extends MediaObject {
 		$album = $this->getAlbum();
 		return $album->checkforGuest($hint, $show);
 	}
-	
-	/**
-	 * Returns true if this image is published and also its album and all of its parents.
-	 * 
-	 * @since 1.5.5
-	 * 
-	 * @return bool
-	 */
-	function isPublic() {
-		if (is_null($this->is_public)) {
-			if (!$this->isPublished()) {
-				return $this->is_public = false;
-			}
-			$album = $this->getAlbum();
-			if(!$album->isPublic()) {
-				return $this->is_public = false;
-			}
-			return $this->is_public = true;
-		} else {
-			return $this->is_public;
-		}
-	}
-	
+		
 	/**
 	 * Returns the filesize in bytes of the full image
 	 * 

@@ -5,7 +5,7 @@
  * 
  * @since 1.6.6
  * 
- * @author Malte MŸller (acrylian) adapted procedural code probably by Stephen Billard (sbillard), Malte MŸller (acrylian) and Subjunk
+ * @author Malte MÃ¼ller (acrylian) adapted procedural code probably by Stephen Billard (sbillard), Malte MÃ¼ller (acrylian) and Subjunk
  * @package admin
  * @subpackage admin-utilites
  */
@@ -17,6 +17,7 @@ class adminGalleryStats {
 	protected $from_number = 0;
 	protected $to_number = 10;
 	public $bargraphmaxsize = 90;
+	protected static $pagepath = FULLWEBPATH . '/' . ZENFOLDER . '/' . UTILITIES_FOLDER . '/gallery_statistics.php?page=gallerystatistics';
 
 	/**
 	 * Setup the object for the statistics to get
@@ -99,17 +100,17 @@ class adminGalleryStats {
 		global $_zp_db;
 		switch ($this->type) {
 			case "albums":
-				return "SELECT * FROM " . $_zp_db->prefix('albums');
+				return "SELECT title, folder, hitcounter, `show`, total_votes, total_value FROM " . $_zp_db->prefix('albums');
 			case "images":
-				return "SELECT * FROM " . $_zp_db->prefix('images');
+				return "SELECT title, filename, albumid, hitcounter, `show`, total_votes, total_value FROM " . $_zp_db->prefix('images');
 			case "pages":
-				return "SELECT * FROM " . $_zp_db->prefix('pages');
+				return "SELECT title, titlelink, hitcounter, `show`, total_votes, total_value FROM " . $_zp_db->prefix('pages');
 			case "news":
-				return "SELECT * FROM " . $_zp_db->prefix('news');
+				return "SELECT title, titlelink, hitcounter, `show`, total_votes, total_value FROM " . $_zp_db->prefix('news');
 			case "newscategories":
-				return "SELECT * FROM " . $_zp_db->prefix('news_categories');
+				return "SELECT title, titlelink, hitcounter, `show` FROM " . $_zp_db->prefix('news_categories');
 			case "tags":
-				return "SELECT * FROM " . $_zp_db->prefix('tags');
+				return "SELECT id, name FROM " . $_zp_db->prefix('tags');
 			case "rss":
 				return '';
 		}
@@ -129,6 +130,25 @@ class adminGalleryStats {
 			return $this->from_number . "," . $this->to_number;
 		}
 	}
+	
+	/**
+	 * Registers the subtabs
+	 * 
+	 * @since 1.6.6
+	 * @global type $_zp_admin_menu
+	 */
+	static function registerSubTabs() {
+		global $_zp_admin_menu;
+		$supportedtypes = static::getSupportedTypes();
+		$tabs = array();
+		foreach ($supportedtypes as $type => $data) {
+			$tabs[$data['title']] = static::$pagepath . '&tab=' . $type;
+		}
+		$_zp_admin_menu['overview']['subtabs'] = array(
+				gettext('General statistics') => adminGalleryStats::$pagepath . '&tab=general'
+		);
+		$_zp_admin_menu['overview']['subtabs'] = array_merge($_zp_admin_menu['overview']['subtabs'], $tabs);
+	}
 
 	/**
 	 * Gets an nestsed array of supported items types as key asn and array with the gettext type title and an array of supported sortorders
@@ -141,6 +161,7 @@ class adminGalleryStats {
 		$supported_gallery = array(
 				'images' => array(
 						'title' => gettext('Images'),
+						'tab_title' => gettext('Images statistics'),
 						'sortorders' => array(
 								'latest',
 								'popular',
@@ -151,6 +172,7 @@ class adminGalleryStats {
 				),
 				'albums' => array(
 						'title' => gettext("Albums"),
+						'tab_title' => gettext('Albums statistics'),
 						'sortorders' => array(
 								'latest',
 								'latestupdated',
@@ -163,13 +185,16 @@ class adminGalleryStats {
 						)
 				),
 				'tags' => array(
-						'title' => gettext('Tags'), 'sortorders' => array(
+						'title' => gettext('Tags'), 
+						'tab_title' => gettext('Tags statistics'),
+						'sortorders' => array(
 								'latest',
 								'mostused'
 						)
 				),
 				'rss' => array(
 						'title' => gettext('RSS'),
+						'tab_title' => gettext('RSS statistics'),
 						'sortorders' => array(
 								'popular'
 						)
@@ -179,6 +204,7 @@ class adminGalleryStats {
 			$supported_zenpage = array(
 					'pages' => array(
 							'title' => gettext('Pages'),
+							'tab_title' => gettext('Pages statistics'),
 							'sortorders' => array(
 									'latest',
 									'popular',
@@ -189,6 +215,7 @@ class adminGalleryStats {
 					),
 					'news' => array(
 							'title' => gettext('News Articles'),
+							'tab_title' => gettext('News articles statistics'),
 							'sortorders' => array(
 									'latest',
 									'popular',
@@ -199,6 +226,7 @@ class adminGalleryStats {
 					),
 					'newscategories' => array(
 							'title' => gettext('News categories'),
+							'tab_title' => gettext('News categories statistics'),
 							'sortorders' => array(
 									'latest',
 									'popular',
@@ -212,6 +240,7 @@ class adminGalleryStats {
 			$supported_downloads = array(
 					'downloads' => array(
 							'title' => gettext('Downloads'),
+							'tab_title' => gettext('Download statistics'),
 							'sortorders' => array(
 									'mostdownloaded'
 							)
@@ -223,56 +252,71 @@ class adminGalleryStats {
 	}
 	
 	/**
+	 * Gets the types data and sortorders by type
+	 * 
+	 * @since 1.6.6
+	 * 
+	 * @param string $type Type to get thte supported sortorders
+	 * @return array
+	 */
+	static function getSupportedTypesByType($type = null) {
+		$supported = static::getSupportedTypes();
+		$supported_final = array();
+		if ($type && $type != 'general' && array_key_exists($type, $supported)) {
+			$supported_final[$type] = $supported[$type];
+		} else {
+			$supported_final = $supported;
+			unset($supported);
+		}
+		return $supported_final;
+	}
+
+	/**
 	 * Prints the jump mark menu for all supported item types and their sortorders
 	 * 
 	 * @since 1.6.6
+	 * @param string $type Type to get the supported sortorders
 	 */
-	static function printStatisticsMenu() {
-		$supported = static::getSupportedTypes();
-		$sortorders = static::getSortorders();
-		echo '<ul class="statistic_navlist">';
-		foreach ($supported as $itemsname => $data) {
-			echo '<li>';
-			echo $data['title'];
-			if ($data['sortorders']) {
-				echo '<ul>';
-				$count = 0;
-				$sortorder_count = count($data['sortorders']);
-				foreach ($data['sortorders'] as $sortorder) {
-					$count++;
-					$sortorder_title = $sortorder;
-					if (array_key_exists($sortorder, $sortorders)) {
-						$sortorder_title = $sortorders[$sortorder];
+	static function printStatisticsMenu($type = null) {
+		$supported = static::getSupportedTypesByType($type);
+		if ($supported) {
+			$sortorders = static::getSortorders();
+			echo '<ul class="statistic_navlist">';
+			foreach ($supported as $itemsname => $data) {
+				echo '<li>';
+				echo $data['title'];
+				if ($data['sortorders']) {
+					echo '<ul>';
+					$count = 0;
+					$sortorder_count = count($data['sortorders']);
+					foreach ($data['sortorders'] as $sortorder) {
+						$count++;
+						$sortorder_title = $sortorder;
+						if (array_key_exists($sortorder, $sortorders)) {
+							$sortorder_title = $sortorders[$sortorder];
+						}
+						echo '<li><a href="' . static::$pagepath . '&tab=' . $itemsname . '#' . $itemsname . '-' . $sortorder . '">' . $sortorder_title . '</a>';
+						if ($sortorder_count != $count) {
+							echo ' | ';
+						}
+						echo '</li>';
 					}
-					echo '<li><a href="#' . $itemsname . '-' . $sortorder . '">' . $sortorder_title . '</a>';
-					if ($sortorder_count != $count) {
-						echo ' | ';
-					}
-					echo '</li>';
+					echo '</ul>';
 				}
-				echo '</ul>';
 			}
+			echo '</ul>';
 		}
-		echo '</ul>';
 	}
-	
+
 	/**
 	 * Gets the action URL for from/to single stats form
 	 * 
 	 * @since 1.6.6.
-	 * 
-	 * @param string $stats The sortorder
-	 * @param string $type The item type 
+ 
 	 * @return string
 	 */
-	static function getSingleStatSelectionFormActionURL($stats = '', $type = '') {
-		$actionurl = FULLWEBPATH . '/' . ZENFOLDER . '/'.UTILITIES_FOLDER . '/gallery_statistics.php';
-		if ($stats && $type) {
-			if ($type == 'downloads') {
-				$actionurl = FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER . '/downloadList/download_statistics.php';
-			}
-		}
-		return $actionurl;
+	static function getSingleStatSelectionFormActionURL() {
+		return static::$pagepath;
 	}
 
 	/**
@@ -281,20 +325,20 @@ class adminGalleryStats {
 	 * @since 1.6.6
 	 * 
 	 * @param array $fromtonumbers The array from as returned by adminGalleryStats::getProcessedFromToNumbers();
-	 * @param string $stats The sortorder to get
+	 * @param string $sortorder The sortorder to get
 	 * @param string $type The item type to get
 	 */
-	static function printSingleStatSelectionForm($fromtonumbers, $stats, $type) {
-		if ($stats && $type) {
-			$actionurl = static::getSingleStatSelectionFormActionURL($stats, $type);
+	static function printSingleStatSelectionForm($fromtonumbers, $sortorder, $type) {
+		if ($sortorder && $type) {
+			$actionurl = static::getSingleStatSelectionFormActionURL();
 			?>
 				<form name="limit" id="limit" action="<?php echo $actionurl; ?>">
 					<label for="from_number"><?php echo gettext("From "); ?></label>
 					<input type ="text" size="10" id="from_number" name="from_number" value="<?php echo $fromtonumbers['from_display']; ?>" />
 					<label for="to_number"><?php echo gettext("to "); ?></label>
 					<input type ="text" size="10" id="to_number" name="to_number" value="<?php echo $fromtonumbers['to_display']; ?>" />
-					<input type="hidden" name="stats"	value="<?php echo html_encode($stats); ?>" />
-					<input type="hidden" name="type" value="<?php echo html_encode($type); ?>" />
+					<input type="hidden" name="sortorder"	value="<?php echo html_encode($sortorder); ?>" />
+					<input type="hidden" name="tab" value="<?php echo html_encode($type); ?>" />
 					<button type="submit"><?php echo gettext("Show"); ?></button>
 				</form>
 			<?php
@@ -323,9 +367,26 @@ class adminGalleryStats {
 				'mostdownloaded' => gettext("Most downloaded")
 		);
 	}
+	
+	/**
+	 * Gets the page title
+	 * 
+	 * @param string $type The item type
+	 * @return string
+	 */
+	static function getPageHeadline($type = null) {
+		$supported = static::getSupportedTypesByType($type);
+		$headline = gettext("Gallery Statistics");
+		if ($supported && $type != 'general') {
+			$headline = sprintf(gettext("Gallery Statistics: %s"), $supported[$type]['title']);
+		} else {
+			$headline = gettext("Gallery Statistics");
+		}
+		return $headline;
+	}
 
 	/**
-	 * Gets the healdine plus appendix
+	 * Gets the statistic table headline plus sortorder appendix
 	 * 
 	 * @since 1.6.6
 	 * 
@@ -502,9 +563,9 @@ class adminGalleryStats {
 		global $_zp_db;
 		switch ($this->type) {
 			case "tags":
-				return $_zp_db->queryFullArray("SELECT tagobj.tagid, count(*) as tagcount, tags.* FROM " . $_zp_db->prefix('obj_to_tag') . " AS tagobj, " . $_zp_db->prefix('tags') . " AS tags WHERE tags.id=tagobj.tagid GROUP BY tags.id ORDER BY tagcount DESC LIMIT " . $this->getDBQueryLimit());
+				return $_zp_db->queryFullArray("SELECT tagobj.tagid, count(*) as tagcount, tags.name FROM " . $_zp_db->prefix('obj_to_tag') . " AS tagobj, " . $_zp_db->prefix('tags') . " AS tags WHERE tags.id=tagobj.tagid GROUP BY tags.id ORDER BY tagcount DESC LIMIT " . $this->getDBQueryLimit());
 			case"newscategories":
-				return $_zp_db->queryFullArray("SELECT news2cat.cat_id, count(*) as catcount, cats.* FROM " . $_zp_db->prefix('news2cat') . " AS news2cat, " . $_zp_db->prefix('news_categories') . " AS cats WHERE cats.id=news2cat.cat_id GROUP BY news2cat.cat_id ORDER BY catcount DESC LIMIT " . $this->getDBQueryLimit());
+				return $_zp_db->queryFullArray("SELECT news2cat.cat_id, count(*) as catcount, cats.titlelink, cats.title FROM " . $_zp_db->prefix('news2cat') . " AS news2cat, " . $_zp_db->prefix('news_categories') . " AS cats WHERE cats.id=news2cat.cat_id GROUP BY news2cat.cat_id ORDER BY catcount DESC LIMIT " . $this->getDBQueryLimit());
 		}
 		return array();
 	}
@@ -538,7 +599,7 @@ class adminGalleryStats {
 	 */
 	private function getPopularImages() {
 		global $_zp_db;
-		$dbquery = "SELECT a.*, ROUND(AVG( i.hitcounter ), 0) AS average FROM " . $_zp_db->prefix('albums') . " a INNER JOIN " . $_zp_db->prefix('images') . " i ON i.albumid = a.id ";
+		$dbquery = "SELECT a.title, a.folder, a.hitcounter, a.show, ROUND(AVG( i.hitcounter ), 0) AS average FROM " . $_zp_db->prefix('albums') . " a INNER JOIN " . $_zp_db->prefix('images') . " i ON i.albumid = a.id ";
 		return $_zp_db->queryFullArray($dbquery . " GROUP BY i.albumid ORDER BY average DESC LIMIT " . $this->getDBQueryLimit());
 	}
 
@@ -580,13 +641,13 @@ class adminGalleryStats {
 		global $_zp_db;
 		switch ($this->type) {
 			case "albums":
-				return $_zp_db->queryFullArray("SELECT comments.ownerid, count(*) as commentcount, albums.* FROM " . $_zp_db->prefix('comments') . " AS comments, " . $_zp_db->prefix('albums') . " AS albums WHERE albums.id=comments.ownerid AND type = 'albums' GROUP BY comments.ownerid ORDER BY commentcount DESC LIMIT " . $this->getDBQueryLimit());
+				return $_zp_db->queryFullArray("SELECT comments.ownerid, count(*) as commentcount, albums.title, albums.folder, albums.show FROM " . $_zp_db->prefix('comments') . " AS comments, " . $_zp_db->prefix('albums') . " AS albums WHERE albums.id=comments.ownerid AND type = 'albums' GROUP BY comments.ownerid ORDER BY commentcount DESC LIMIT " . $this->getDBQueryLimit());
 			case "images":
-				return $_zp_db->queryFullArray("SELECT comments.ownerid, count(*) as commentcount, images.* FROM " . $_zp_db->prefix('comments') . " AS comments, " . $_zp_db->prefix('images') . " AS images WHERE images.id=comments.ownerid AND type = 'images' GROUP BY comments.ownerid ORDER BY commentcount DESC LIMIT " . $this->getDBQueryLimit());
+				return $_zp_db->queryFullArray("SELECT comments.ownerid, count(*) as commentcount, images.albumid, images.title, images.filename, images.show FROM " . $_zp_db->prefix('comments') . " AS comments, " . $_zp_db->prefix('images') . " AS images WHERE images.id=comments.ownerid AND type = 'images' GROUP BY comments.ownerid ORDER BY commentcount DESC LIMIT " . $this->getDBQueryLimit());
 			case "pages":
-				return $_zp_db->queryFullArray("SELECT comments.ownerid, count(*) as commentcount, pages.* FROM " . $_zp_db->prefix('comments') . " AS comments, " . $_zp_db->prefix('pages') . " AS pages WHERE pages.id=comments.ownerid AND type = 'page' GROUP BY comments.ownerid ORDER BY commentcount DESC LIMIT " . $this->getDBQueryLimit());
+				return $_zp_db->queryFullArray("SELECT comments.ownerid, count(*) as commentcount, pages.title, pages.titlelink, pages.hitcounter, pages.show FROM " . $_zp_db->prefix('comments') . " AS comments, " . $_zp_db->prefix('pages') . " AS pages WHERE pages.id=comments.ownerid AND type = 'page' GROUP BY comments.ownerid ORDER BY commentcount DESC LIMIT " . $this->getDBQueryLimit());
 			case "news":
-				return $_zp_db->queryFullArray("SELECT comments.ownerid, count(*) as commentcount, news.* FROM " . $_zp_db->prefix('comments') . " AS comments, " . $_zp_db->prefix('news') . " AS news WHERE news.id=comments.ownerid AND type = 'news' GROUP BY comments.ownerid ORDER BY commentcount DESC LIMIT " . $this->getDBQueryLimit());
+				return $_zp_db->queryFullArray("SELECT comments.ownerid, count(*) as commentcount, news.title, news.titlelink, news.hitcounter, news.show FROM " . $_zp_db->prefix('comments') . " AS comments, " . $_zp_db->prefix('news') . " AS news WHERE news.id=comments.ownerid AND type = 'news' GROUP BY comments.ownerid ORDER BY commentcount DESC LIMIT " . $this->getDBQueryLimit());
 		}
 		return array();
 	}
@@ -601,7 +662,7 @@ class adminGalleryStats {
 	 */
 	private function getAlbumsWithMostImages() {
 		global $_zp_db;
-		return $_zp_db->queryFullArray("SELECT images.albumid, count(*) as imagenumber, albums.* FROM " . $_zp_db->prefix('images') . " AS images, " . $_zp_db->prefix('albums') . " AS albums WHERE albums.id=images.albumid GROUP BY images.albumid ORDER BY imagenumber DESC LIMIT " . $this->getDBQueryLimit());
+		return $_zp_db->queryFullArray("SELECT images.albumid, count(*) as imagenumber, albums.title, albums.folder, albums.show FROM " . $_zp_db->prefix('images') . " AS images, " . $_zp_db->prefix('albums') . " AS albums WHERE albums.id=images.albumid GROUP BY images.albumid ORDER BY imagenumber DESC LIMIT " . $this->getDBQueryLimit());
 	}
 
 	/**
@@ -647,7 +708,6 @@ class adminGalleryStats {
 	 * @return array
 	 */
 	private function getLatestUpdatedItems() {
-		global $_zp_db;
 		$albums = getAlbumStatistic($this->to_number, 'latestupdated', '');
 		if (!empty($albums)) {
 			$stats_albums = array();
@@ -945,17 +1005,13 @@ class adminGalleryStats {
 				'viewmoreurl' => '',
 				'viewmoreurl_title' => ''
 		);
-		if (isset($_GET['stats'])) {
-			$data['viewmoreurl'] = FULLWEBPATH . '/' . ZENFOLDER . '/' . UTILITIES_FOLDER . '/gallery_statistics.php';
+		if (isset($_GET['sortorder'])) {
+			$data['viewmoreurl'] = static::$pagepath . '&amp;tab=' . $this->type;
 			$data['viewmoreurl_title'] = gettext("Back to the top 10 lists") . ' &rarr;';
 		} else {
 			if (!$this->getNoStatisticsMessage()) {
 				$data['viewmoreurl_title'] = gettext("View more") . ' &rarr;';
-				if ($this->type == 'downloads') {
-					$data['viewmoreurl'] = FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER . '/downloadList/download_statistics.php?stats=' . $this->sortorder . '&amp;type=' . $this->type;
-				} else {
-					$data['viewmoreurl'] = 'gallery_statistics.php?stats=' . $this->sortorder . '&amp;type=' . $this->type;
-				}
+				$data['viewmoreurl'] = static::$pagepath . '&amp;sortorder=' . $this->sortorder . '&amp;tab=' . $this->type;
 			}
 		}
 		return $data;

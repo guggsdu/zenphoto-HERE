@@ -56,13 +56,13 @@ class registerUserOptions {
 
 	function __construct() {
 		global $_zp_authority;
+		purgeOption('register_user_page_tip'); // unused anyway
+		
 		setOptionDefault('register_user_link', '_PAGE_/register');
-		gettext($str = 'You have received this email because you registered with the user id %3$s on this site.' . "\n" . 'To complete your registration visit %1$s.');
-		setOptionDefault('register_user_text', getAllTranslations($str));
-		gettext($str = 'Click here to register for this site.');
-		setOptionDefault('register_user_page_tip', getAllTranslations($str));
-		gettext($str = 'Register');
-		setOptionDefault('register_user_page_link', getAllTranslations($str));
+		setOptionDefault('register_user_text', '');
+		setOptionDefault('register_user_text_auth', '');
+		setOptionDefault('register_user_page_link', 1);
+		setOptionDefault('register_user_page_linktext', '');
 		setOptionDefault('register_user_captcha', 0);
 		setOptionDefault('register_user_email_is_id', 1);
 		setOptionDefault('register_user_create_album', 0);
@@ -72,6 +72,7 @@ class registerUserOptions {
 		} else {
 			setOptionDefault('register_user_notify', 1);
 		}
+		setOptionDefault('register_user_moderated', 0);
 		setOptionDefault('register_user_dataconfirmation', 0);
 		setOptionDefault('register_user_textquiz', 0);
 		setOptionDefault('register_user_textquiz_question', '');
@@ -85,17 +86,21 @@ class registerUserOptions {
 		global $_zp_authority, $_zp_captcha;
 		$options = array(
 				gettext('Link text') => array(
+						'key' => 'register_user_page_linktext',
+						'type' => OPTION_TYPE_TEXTAREA,
+						'desc' => gettext('The link text to the user register page on the login form. Leave empty to use the default.')),
+				gettext('Link on login form') => array(
 						'key' => 'register_user_page_link',
-						'type' => OPTION_TYPE_TEXTAREA,
-						'desc' => gettext('If this option is set, the visitor login form will include a link to this page. The link text will be labeled with the text provided.')),
-				gettext('Hint text') => array(
-						'key' => 'register_user_page_tip',
-						'type' => OPTION_TYPE_TEXTAREA,
-						'desc' => gettext('If this option is set, the visitor login form will include a link to this page. The link text will be labeled with the text provided.')),
+						'type' => OPTION_TYPE_CHECKBOX,
+						'desc' => gettext('If this option is set, the visitor login form will include a link to this page. The link text will be labeled with the text provided above.')),
 				gettext('Notify*') => array(
 						'key' => 'register_user_notify',
 						'type' => OPTION_TYPE_CHECKBOX,
-						'desc' => gettext('If checked, an e-mail will be sent to the gallery admin when a new user has verified his registration.')),
+						'desc' => gettext('If checked, an e-mail will be sent to the gallery admins when a new user has verified his registration.')),
+				gettext('Moderated registrations') => array(
+						'key' => 'register_user_moderated',
+						'type' => OPTION_TYPE_CHECKBOX,
+						'desc' => gettext('If checked, registrants can be reviewed first and do not get an automatic verfification mail. You can either approve users manually or send the verification request manually after reviewing the user. The latter is recommended in some jurisdictions like the EU.')),
 				gettext('User album') => array(
 						'key' => 'register_user_create_album',
 						'type' => OPTION_TYPE_CHECKBOX,
@@ -103,15 +108,19 @@ class registerUserOptions {
 				gettext('Email ID') => array(
 						'key' => 'register_user_email_is_id',
 						'type' => OPTION_TYPE_CHECKBOX,
-						'desc' => gettext('If checked, The use’s e-mail address will be used as his User ID.')),
-				gettext('Email notification text') => array(
+						'desc' => gettext('If checked, the user’s e-mail address will be used as his User ID.')),
+				gettext('Email notification text (Verification request)') => array(
 						'key' => 'register_user_text',
 						'type' => OPTION_TYPE_TEXTAREA,
-						'desc' => gettext('Text for the body of the email sent to the registrant for registration verification. <p class="notebox"><strong>Note:</strong> You must include <code>%1$s</code> in your message where you wish the <em>registration verification</em> link to appear. You may also insert the registrant’s <em>name</em> (<code>%2$s</code>), <em>user id</em> (<code>%3$s</code>), and <em>password</em>* (<code>%4$s</code>).<br /><br />*For security reasons we recommend <strong>not</strong> inserting the <em>password</em>.</p>')),
+						'desc' => gettext('Text for the body of the email sent to the registrant for registration verification. Leave empty to use the default text. <p class="notebox"><strong>Note:</strong> You must include <code>%1$s</code> in your message where you wish the <em>registration verification</em> link to appear. You may also insert the registrant’s <em>name</em> (<code>%2$s</code>) and <em>user id</em> (<code>%3$s</code>).</p>')),
+				gettext('Email notification text (Authentication)') => array(
+						'key' => 'register_user_text_auth',
+						'type' => OPTION_TYPE_TEXTAREA,
+						'desc' => gettext('Text for the body of the email sent to the registrant if authenticated manually by an admin. Leave empty to use the default text.')),
 				gettext('Data usage confirmation') => array(
 						'key' => 'register_user_dataconfirmation',
 						'type' => OPTION_TYPE_CHECKBOX,
-						'desc' => gettext('If checked a mandatory checkbox is added for users to confirm about data storage and handling by your site. This is recommend to comply with the European GDPR.')),
+						'desc' => gettext('If checked a mandatory checkbox is added for users to agree with data storage and handling by your site. This is recommend to comply with the European GDPR.')),
 				gettext('CAPTCHA') => array(
 						'key' => 'register_user_captcha',
 						'type' => OPTION_TYPE_CHECKBOX,
@@ -163,6 +172,7 @@ class registerUserOptions {
 			$options[gettext('Notify*')]['disabled'] = true;
 			$options[gettext('Notify*')]['desc'] .= ' ' . gettext('Of course there must be some Administrator with an e-mail address for this option to make sense!');
 		}
+		
 		if (class_exists('user_groups')) {
 			$admins = $_zp_authority->getAdministrators('groups');
 			$defaultrights = ALL_RIGHTS;
@@ -188,9 +198,9 @@ class registerUserOptions {
 					'desc' => gettext("Initial group assignment for the new user."));
 		} else {
 			if (is_numeric(getOption('register_user_user_rights'))) {
-				setOptionDefault('register_user_user_rights', NO_RIGHTS);
+				setOptionDefault('register_user_user_rights', USER_RIGHTS);
 			} else {
-				setOption('register_user_user_rights', NO_RIGHTS);
+				setOption('register_user_user_rights', USER_RIGHTS);
 			}
 			$options[gettext('Default rights')] = array(
 					'key' => 'register_user_user_rights',
@@ -298,11 +308,11 @@ class registerUser {
 				registerUser::$notify = 'invalidcaptcha';
 			}
 		}
-		registerUser::$admin_name = trim(sanitize($_POST['admin_name']));
+		registerUser::$admin_name = trim(strval(sanitize($_POST['admin_name'])));
 		if (empty(registerUser::$admin_name)) {
 			registerUser::$notify = 'incomplete';
 		}
-		registerUser::$user = trim(sanitize($_POST['user']));
+		registerUser::$user = trim(strval(sanitize($_POST['user'])));
 		if (getOption('register_user_email_is_id')) {
 			$mail_duplicate = $_zp_authority->isUniqueMailaddress(registerUser::$user, registerUser::$user);
 			if (!$mail_duplicate) {
@@ -310,7 +320,7 @@ class registerUser {
 			}
 		}
 		if (isset($_POST['admin_email'])) {
-			registerUser::$admin_email = trim(sanitize($_POST['admin_email']));
+			registerUser::$admin_email = trim(strval(sanitize($_POST['admin_email'])));
 			$mail_duplicate = $_zp_authority->isUniqueMailaddress(registerUser::$admin_email, registerUser::$user);
 			if (!$mail_duplicate) {
 				registerUser::$notify = 'duplicateemail';
@@ -328,8 +338,8 @@ class registerUser {
 		if (registerUser::getQuizFieldQuestion('register_user_textquiz')) {
 			$textquiz_error = false;
 			if (isset($_POST['admin_textquiz'])) {
-				$textquiz_answer = strtolower(trim(get_language_string(getOption('register_user_textquiz_answer'))));
-				$textquiz_answer_user = strtolower(trim(sanitize($_POST['admin_textquiz'])));
+				$textquiz_answer = strtolower(trim(strval(get_language_string(getOption('register_user_textquiz_answer')))));
+				$textquiz_answer_user = strtolower(trim(strval(sanitize($_POST['admin_textquiz']))));
 				if (empty($textquiz_answer_user) || $textquiz_answer_user != $textquiz_answer) {
 					$textquiz_error = true;
 				}
@@ -415,17 +425,20 @@ class registerUser {
 						}
 					} else {
 						$userobj->save();
-						if (MOD_REWRITE) {
-							$verify = '?verify=';
-						} else {
-							$verify = '&verify=';
-						}
-						registerUser::$link = SERVER_HTTP_HOST . registerUser::getLink() . $verify . bin2hex(serialize(array('user' => registerUser::$user, 'email' => registerUser::$admin_email)));
-						registerUser::$message = sprintf(get_language_string(getOption('register_user_text')), registerUser::$link, registerUser::$admin_name, registerUser::$user, $pass);
-						registerUser::$notify = zp_mail(get_language_string(gettext('Registration confirmation')), registerUser::$message, array(registerUser::$user => registerUser::$admin_email));
-						if (empty(registerUser::$notify)) {
+						$subject = sprintf(gettext('New user registration on your site %s'), getGalleryTitle());
+						if (getOption('register_user_moderated')) {
 							registerUser::$notify = 'accepted';
+							$message = sprintf(gettext('%1$s (%2$s) has registered for your site providing an e-mail address of %3$s and requires your moderation.'), $userobj->getName(), $userobj->getUser(), $userobj->getEmail());
+						} else {
+							registerUser::$notify = registerUser::sendVerificationEmail($userobj);
+							if (empty(registerUser::$notify)) {
+								registerUser::$notify = 'accepted';
+								$message = sprintf(gettext('%1$s (%2$s) has registered for your site providing an e-mail address of %3$s and has been sent a verification request email.'), $userobj->getName(), $userobj->getUser(), $userobj->getEmail());
+							}
 						}
+						if (getOption('register_user_notify')) {
+							$_zp_authority->sendAdminNotificationEmail($subject, $message, 'alladmins');
+						} 
 					}
 				}
 			} else {
@@ -434,6 +447,43 @@ class registerUser {
 		} else {
 			registerUser::$notify = 'incomplete';
 		}
+	}
+	
+	/**
+	 * Sends a verification email to a user. The mode has impact on the email message send.
+	 * 
+	 * @since 1.6.6
+	 * 
+	 * @param obj $userobj
+	 * @param string $mode 'verification' self-verification via email, 'authentication' for manual aunthentication by an admin
+	 * @return string
+	 */
+	static function sendVerificationEmail($userobj, $mode = 'verification') {
+		if (MOD_REWRITE) {
+			$verify = '?verify=';
+		} else {
+			$verify = '&verify=';
+		}
+		$link = SERVER_HTTP_HOST . registerUser::getLink() . $verify . bin2hex(serialize(array('user' => $userobj->getUser(), 'email' => $userobj->getEmail())));
+		switch ($mode) {
+			default:
+			case 'verification':
+				$subject = sprintf(gettext('Registration confirmation required for the site %1$s (%2$s)'), getGalleryTitle(), FULLWEBPATH);
+				$message = get_language_string(getOption('register_user_text'));
+				if (!$message) {
+					$message = gettext('You have received this email because you registered with the user id %3$s on this site.' . "\n" . 'To complete your registration visit %1$s');
+				}
+				break;
+			case 'authentication':
+				$subject = sprintf(gettext('Registration authenticated for the site %1$s (%2$s)'), getGalleryTitle(), FULLWEBPATH);
+				$message = get_language_string(getOption('register_user_text_auth'));
+				if (!$message) {
+					$message = gettext('You have received this email because you registered with the user id %3$s on this site.' . "\n" . 'Your registration has been authenticated by an administrator.');
+				}
+				break;
+		}
+		$message_final = sprintf($message, $link, $userobj->getName(), $userobj->getUser());
+		return zp_mail($subject,$message_final, array($userobj->getUser() => $userobj->getEmail()));
 	}
 
 	/**
@@ -488,11 +538,13 @@ class registerUser {
 							$rights = USER_RIGHTS; //NO_RIGHTS;
 						}
 					}
-					$userobj->setRights($rights | NO_RIGHTS);
+					$userobj->setRights($rights | NO_RIGHTS); 
 					$userobj->setGroup($group);
 					zp_apply_filter('register_user_verified', $userobj);
 					if (getOption('register_user_notify')) {
-						registerUser::$notify = zp_mail(gettext('Zenphoto Gallery registration'), sprintf(gettext('%1$s (%2$s) has registered for the zenphoto gallery providing an e-mail address of %3$s.'), $userobj->getName(), $userobj->getUser(), $userobj->getEmail()));
+						$subject = sprintf(gettext('New user verification on your site %s'), getGalleryTitle());
+						$message = sprintf(gettext('%1$s (%2$s) has registered and verified for your site providing an e-mail address of %3$s.'), $userobj->getName(), $userobj->getUser(), $userobj->getEmail());
+						registerUser::$notify = $_zp_authority->sendAdminNotificationEmail($subject, $message, 'alladmins');
 					}
 					if (empty(registerUser::$notify)) {
 						if (getOption('register_user_create_album')) {
@@ -535,8 +587,6 @@ class registerUser {
 						<p><?php echo gettext('You may now log onto the site and verify your personal information.'); ?></p>
 					</div>
 				<?php
-				 $userobj->setRights(USER_RIGHTS | NO_RIGHTS);
-				 $userobj->save(); 
 				case 'already_verified':
 				case 'loginfailed':
 					registerUser::$link = getRequestURI();
@@ -553,7 +603,15 @@ class registerUser {
 				case 'accepted':
 					?>
 					<div class="messagebox fade-message">
-						<p><?php echo gettext('Your registration information has been accepted. An email has been sent to you to verify your email address.'); ?></p>
+						<p>
+						<?php 
+						if (getOption('register_user_moderated')) {
+							echo gettext('Your registration information has been received. Please note that registrations are moderated. If your registration has been approved you will be sent an email to verify your email address.');
+						} else {
+							echo gettext('Your registration information has been accepted. An email has been sent to you to verify your email address.'); 
+						}
+						?>
+						</p>
 					</div>
 					<?php
 					if (registerUser::$notify != 'honeypot') {
@@ -684,7 +742,11 @@ class registerUser {
 		if (registerUser::$notify != 'success') {
 			$form = getPlugin('register_user/register_user_form.php', true);
 			require_once($form);
+			if (getOption('register_user_moderated')) {
+				echo '<p><strong>' . gettext('Please note: Registrations are moderated.') . '</strong></p>';
+			}
 		}
+		
 	}
 
 	/**
@@ -702,8 +764,11 @@ class registerUser {
 			if (!is_null($class)) {
 				$class = 'class="' . $class . '"';
 			}
-			if (is_null($linktext)) {
-				$linktext = get_language_string(getOption('register_user_page_link'));
+			if (is_null($linktext) && getOption('register_user_page_link')) {
+				$linktext = get_language_string(getOption('register_user_page_linktext'));
+				if (!$linktext) {
+					$linktext = gettext('Register');
+				}
 			}
 			echo $prev;
 			?>

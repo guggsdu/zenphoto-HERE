@@ -122,7 +122,7 @@ class scriptlessSocialsharingOptions {
 						gettext('Center') => 'center',
 						gettext('Right') => 'right'
 				),
-				'desc' => gettext('Select the alignment for te profile button alignment. The theme used may override this and may require an update to work properly.')
+				'desc' => gettext('Select profile buttons alignment. The theme used may override this and may require an update to work properly.')
 		);
 		return $options;
 	}
@@ -523,23 +523,18 @@ class scriptlessSocialsharing {
 									// Grab link from the DOM
 									const button = document.querySelector('.<?php echo $button['class']; ?>');
 									let key = 'mastodon-instance';
-									let prompt = '<?php echo gettext('Please enter your Mastodon instance first, e.g mastodon.social.'); ?>';
+									let prompt= '<?php echo gettext('Please enter your Mastodon instance first, e.g mastodon.social.'); ?>';
 
 									button.addEventListener('click', (e) => {
-										if(localStorage.getItem(key)) {
-											button.href = button.href.replace(
-													"mastodon.social", 
-													localStorage.getItem(key)
-											);
-										} else {
-											e.preventDefault();
-											let instance = window.prompt(prompt);
-											localStorage.setItem(key, instance);
-											button.href = button.href.replace(
-													"mastodon.social", 
-													localStorage.getItem(key)
-											);
-											window.location.href = button.href;
+										e.preventDefault();
+										let instance = window.prompt(prompt);
+										let shareurl = button.href;
+										shareurl = shareurl.replace(
+										"mastodon.social", 
+											instance
+										);
+										if (instance) {
+											window.location.href = shareurl;
 										}
 									});
 								</script>
@@ -609,7 +604,9 @@ class scriptlessSocialsharing {
 			}
 			?>
 			<div class="scriptless_socialsharing-profiles<?php echo $alignmentclass; ?>">
+				<?php if ($before) { ?>
 				<div class="scriptless_socialsharing-profiles-before"><?php echo $before; ?></div>
+				<?php } ?>
 				<ul class="scriptless_socialsharing-profileslist">
 				<?php
 				foreach ($buttons as $network => $button) {
