@@ -198,6 +198,8 @@ code {
  */
 ul.no_bullets, ol.no_bullets {
 	list-style: none;
+	padding: 0;
+	margin: 0 0 0 25px;
 }
 ul.nav,
 ul.nav li,
@@ -975,6 +977,11 @@ input.tags {
 	margin-left: 0px;
 	padding: 4px 4px 3px 4px;
 	border-bottom: 1px solid #dfdfdf;
+}
+
+/* make sure preformatted text wraps in the utility boxes on the Overview page */
+.overview-utility pre {
+	white-space: pre-wrap;
 }
 
 .overview-install-info {

@@ -7,6 +7,8 @@
 Define('PHP_MIN_VERSION', '7.0.0');
 Define('PHP_DESIRED_VERSION', '8.0.0');
 
+@ini_set('display_errors', '0');
+
 // leave this as the first executable statement to avoid problems with PHP not having gettext support.
 if (!function_exists("gettext")) {
 	require_once(dirname(dirname(__FILE__)) . '/libs/functions-gettext.php');
@@ -22,6 +24,7 @@ if (version_compare(PHP_VERSION, PHP_MIN_VERSION, '<')) {
 	die(sprintf(gettext('Zenphoto requires PHP version %s or greater'), PHP_MIN_VERSION));
 }
 require_once(dirname(dirname(__FILE__)) . '/global-definitions.php');
+require_once(dirname(dirname(__FILE__)) . '/definitions-debug.php');
 
 session_cache_limiter('nocache');
 $session = session_start();
@@ -1159,7 +1162,7 @@ $upgrade = $versioncheck['upgrade_text'];
 							}
 							setup::primeMark(gettext('Zenphoto files'));
 							@set_time_limit(180);
-							$lcFilesystem = file_exists(strtoupper(__FILE__));
+							$lcFilesystem = file_exists(SERVERPATH . '/' . ZENFOLDER . '/setup/' . strtoupper('index.php'));
 							$base = $_zp_setup_serverpath . '/';
 							setup::getResidentZPFiles(SERVERPATH . '/' . ZENFOLDER, $lcFilesystem);
 							if ($lcFilesystem) {
@@ -2362,7 +2365,12 @@ $upgrade = $versioncheck['upgrade_text'];
 						
 						//1.6.1
 						$sql_statements[] = "ALTER TABLE $tbl_menu_manager ADD COLUMN `open_newtab` int(1) unsigned NOT NULL default '0'";
-						
+
+						//1.6.6
+						$sql_statements[] = "ALTER TABLE $tbl_albums ADD INDEX albums_parentid (`parentid`)";
+						$sql_statements[] = "ALTER TABLE $tbl_albums ADD INDEX albums_dynamic_parentid (`dynamic`, `parentid`)";
+						$sql_statements[] = "ALTER TABLE $tbl_albums ADD INDEX albums_dynamic_parentid_show (`dynamic`, `parentid`, `show`)";
+
 						// do this last incase there are any field changes of like names!
 						foreach ($_zp_exifvars as $key => $exifvar) {
 							if ($s = $exifvar[6]) {

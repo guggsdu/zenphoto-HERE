@@ -122,7 +122,6 @@ if (isset($_GET['action'])) {
 							} else {
 								$what = 'update';
 								$userobj = Authority::newAdministrator($user);
-								markUpdated();
 							}
 
 							if (isset($_POST[$i . '-admin_name'])) {
@@ -213,11 +212,24 @@ if (isset($_GET['action'])) {
 							}
 							$_zp_admin_user_updated = zp_apply_filter('save_admin_custom_data', $_zp_admin_user_updated, $userobj, $i, $alter);
 							if (isset($_POST['createAlbum_' . $i])) {
-								$userobj->createPrimealbum();
-								markUpdated();
+								if (isset($_POST[$i . '-authentication']) && $_POST[$i . '-authentication'] == 'authenticate') {
+									$userobj->createPrimealbum();
+									markUpdated();
+								}
 							}
+							if (isset($_POST[$i . '-authentication']) && $_POST[$i . '-authentication'] === 'send_verification_request_email') {
+								if (extensionEnabled('register_user') && getOption('register_user_moderated')) {
+									registerUser::sendVerificationEmail($userobj);
+								} 
+							}
+							if (isset($_POST[$i . '-authentication']) && $_POST[$i . '-authentication'] == 'authenticate' && extensionEnabled('register_user')) {
+								registerUser::sendVerificationEmail($userobj, 'authentication');
+							}
+			
 							if ($_zp_admin_user_updated) {
+								if(in_array($what, array('new', 'update'))) {
 								$returntab .= '&show[]=' . $user;
+								}
 								$msg = zp_apply_filter('save_user', $msg, $userobj, $what);
 								if (empty($msg)) {
 									if (!$notify)
@@ -470,6 +482,7 @@ echo $refresh;
 						</p>
 						<br class="clearall" /><br />
 						<table class="bordered"> <!-- main table -->
+						<table class="bordered adminusertable"> <!-- main table -->
 
 							<tr>
 								<?php
@@ -545,7 +558,7 @@ echo $refresh;
 									$userobj->setValid(1);
 								}
 								$groupname = $userobj->getGroup();
-								if ($pending = $userobj->getRights() == 0) {
+								if ($userobj->isPending()) {
 									$master = '(<em>' . gettext('pending verification') . '</em>)';
 								} else {
 									$master = '&nbsp;';
@@ -617,17 +630,23 @@ echo $refresh;
 
 													<?php
 													if (!$alterrights || !$userobj->getID()) {
-														if ($pending) {
+														if ($userobj->isPending()) {
 															?>
-															<input type="checkbox" name="<?php echo $id ?>-confirmed" value="<?php
-															echo NO_RIGHTS;
-															echo $alterrights;
-															?>" />
-																		 <?php echo gettext("Authenticate user"); ?>
-																		 <?php
-																	 } else {
-																		 ?>
-															<input type = "hidden" name="<?php echo $id ?>-confirmed"	value="<?php echo NO_RIGHTS; ?>" />
+															<ul class="no_bullets">
+																<li><label><input type="radio" name="<?php echo $id ?>-authentication" value="authenticate" />
+																<?php echo gettext("Authenticate user"); ?></label></li>
+																<?php if (extensionEnabled('register_user') && getOption('register_user_moderated')) { ?>
+																	<li><label><input type="radio" name="<?php echo $id ?>-authentication" value="send_verification_request_email" />
+																	<?php echo gettext("Send verification request email"); ?></label></li>
+																<?php } ?>
+																<li><label><input type="radio" name="<?php echo $id ?>-authentication" value="donothing" checked />
+																<?php echo gettext("Do nothing"); ?></label></li>
+															</ul>
+															<?php
+														} else {
+															// not really used but similar to beforein case…
+															?>
+															<input type="hidden" name="<?php echo $id ?>-authentication"	value="confirmed" />
 															<?php
 														}
 														?>
@@ -722,12 +741,16 @@ echo $refresh;
 													<?php
 													$primeAlbum = $userobj->getAlbum();
 													if (zp_loggedin(MANAGE_ALL_ALBUM_RIGHTS)) {
-														if (empty($primeAlbum)) {
+														if (empty($primeAlbum)) {											
 															if (!($userobj->getRights() & (ADMIN_RIGHTS | MANAGE_ALL_ALBUM_RIGHTS))) {
+																$createalbum_checked = '';
+																if (extensionEnabled('register_user') && getOption('register_user_create_album') && $userobj->getRights() == 0) {
+																	$createalbum_checked = ' checked="checked"';
+																}									
 																?>
 																<p>
 																	<label>
-																		<input type="checkbox" name="createAlbum_<?php echo $id ?>" id="createAlbum_<?php echo $id ?>" value="1" <?php echo $alterrights; ?>/>
+																		<input type="checkbox" name="createAlbum_<?php echo $id ?>" id="createAlbum_<?php echo $id ?>" value="1" <?php echo $alterrights . $createalbum_checked; ?>/>
 																		<?php echo gettext('create primary album'); ?>
 																	</label>
 																</p>
@@ -742,7 +765,7 @@ echo $refresh;
 																</label>
 															</p>
 															<p class="notebox">
-																<?php echo gettext('The primary album was created in association with the user. It will be removed if the user is deleted. Delinking the album removes this association.'); ?>
+																<?php echo gettext('The primary album was created in association with the user. It will be removed if the user is deleted unless you enable the related option on Options > Security.'); ?>
 															</p>
 															<?php
 														}
