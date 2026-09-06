@@ -4,7 +4,7 @@
  * @package zpcore\setup
  */
 // force UTF-8 Ø
-Define('PHP_MIN_VERSION', '7.4.0');
+Define('PHP_MIN_VERSION', '8.0.0');
 Define('PHP_DESIRED_VERSION', '8.4.0');
 
 @ini_set('display_errors', '0');
@@ -584,7 +584,7 @@ $upgrade = $versioncheck['upgrade_text'];
 							} 
 							
 							$err = setup::versionCheck(PHP_MIN_VERSION, PHP_DESIRED_VERSION, PHP_VERSION);
-							$good = setup::checkMark($err, sprintf(gettext("PHP version %s"), PHP_VERSION), "", sprintf(gettext('PHP Version %1$s or greater is required. Version %2$s or greater is strongly recommended. Use earlier versions at your own risk. Zenphoto is developed on PHP 8+ and in any case not tested below 7.4. There will be no fixes if you encounter any issues below 7.4. Please contact your webhost about a PHP upgrade on your server.'), PHP_MIN_VERSION, PHP_DESIRED_VERSION), false) && $good;
+							$good = setup::checkMark($err, sprintf(gettext("PHP version %s"), PHP_VERSION), "", sprintf(gettext('PHP Version %1$s or greater is required. Version %2$s or greater is strongly recommended. Use earlier versions at your own risk. Zenphoto is developed on PHP 8.4+ and in any case not tested below 8.0. There will be no fixes if you encounter any issues below 8.0. Please contact your webhost about a PHP upgrade on your server.'), PHP_MIN_VERSION, PHP_DESIRED_VERSION), false) && $good;
 							
 							if ($session && session_id()) {
 								setup::checkmark(true, gettext('PHP <code>Sessions</code>.'), gettext('PHP <code>Sessions</code> [appear to not be working].'), '', true);
