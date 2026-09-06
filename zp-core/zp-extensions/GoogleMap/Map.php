@@ -38,6 +38,18 @@ header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
 		}
 
 		if (is_array($map_data)) {
+			// Verify the payload integrity signature and only allow the known fields (GHSA-9jvx-xfxq-34qr).
+			// The map_data blob is built server side by GoogleMap.php. Without the signature check a guest
+			// could forge the blob and have arbitrary JavaScript echoed into the page.
+			$signature = isset($map_data['signature']) ? $map_data['signature'] : '';
+			unset($map_data['signature']);
+			$allowedKeys = array_flip(array('output_js_contents', 'output_html'));
+			if ($signature === '' || array_diff_key($map_data, $allowedKeys) || !hash_equals($signature, sha1(serialize($map_data) . HASH_SEED))) {
+				$map_data = NULL;
+			}
+		}
+
+		if (is_array($map_data)) {
 
 			/* map configuration */
 			$mapControls = getOption('gmap_control_type');
@@ -81,7 +93,7 @@ header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
 			<div class="googlemap">
 				<script>
 	<?php
-	echo js_encode($map->output_js_contents);
+	echo $map->output_js_contents;
 	echo omsAdditions();
 	?>
 
@@ -90,7 +102,7 @@ header('Last-Modified: ' . gmdate('D, d M Y H:i:s') . ' GMT');
 					}
 				</script>
 				<div id="googlemap_data">
-					<?php echo html_encode($map->output_html); ?>
+					<?php echo $map->output_html; ?>
 				</div>
 			</div>
 			<?php
