@@ -8,9 +8,12 @@
 if (isset($_POST['id']) && isset($_POST['table'])) {
 	define('OFFSET_PATH', 4);
 	require_once(dirname(dirname(dirname(__FILE__))) . '/template-functions.php');
-
+	XSRFdefender('rating');
 	$id = sanitize_numeric($_POST['id']);
 	$table = sanitize($_POST['table'], 3);
+	if (!in_array($table, array('images', 'albums', 'news', 'pages'))) {
+		return;
+	}
 	$dbtable = $_zp_db->prefix($table);
 	$ip = jquery_rating::id();
 	$unique = '_' . $table . '_' . $id;

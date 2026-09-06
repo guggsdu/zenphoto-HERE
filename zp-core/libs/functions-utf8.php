@@ -8,36 +8,36 @@
  */
 
 function mb_strtolower($str) {
-	deprecationNotice('Install the native PHP extensions multibyte and icon on your server or ask your host about it');
+	deprecationNotice('Install the native PHP extensions multibyte and iconv on your server or ask your host about it');
 	return utf8::strtolower($str);
 }
 
 function mb_strtoupper($str) {
-	deprecationNotice('Install the native PHP extensions multibyte and icon on your server or ask your host about it');
+	deprecationNotice('Install the native PHP extensions multibyte and iconv on your server or ask your host about it');
 	return utf8::strtoupper($str);
 }
 
 function mb_strlen($str) {
-	deprecationNotice('Install the native PHP extensions multibyte and icon on your server or ask your host about it');
+	deprecationNotice('Install the native PHP extensions multibyte and iconv on your server or ask your host about it');
 	return utf8::strlen($str);
 }
 
 function mb_substr($str, $start, $length = NULL) {
-	deprecationNotice('Install the native PHP extensions multibyte and icon on your server or ask your host about it');
+	deprecationNotice('Install the native PHP extensions multibyte and iconv on your server or ask your host about it');
 	return utf8::substr($str, $start, $length);
 }
 
 function mb_strrpos($haystack, $needle) {
-	deprecationNotice('Install the native PHP extensions multibyte and icon on your server or ask your host about it');
+	deprecationNotice('Install the native PHP extensions multibyte and iconv on your server or ask your host about it');
 	return utf8::strrpos($haystack, $needle);
 }
 
 function mb_strpos($haystack, $needle, $offset = 0) {
-	deprecationNotice('Install the native PHP extensions multibyte and icon on your server or ask your host about it');
+	deprecationNotice('Install the native PHP extensions multibyte and iconv on your server or ask your host about it');
 	return utf8::strpos($haystack, $needle, $offset);
 }
 
 function mb_substr_count($haystack, $needle) {
-	deprecationNotice('Install the native PHP extensions multibyte and icon on your server or ask your host about it');
+	deprecationNotice('Install the native PHP extensions multibyte and iconv on your server or ask your host about it');
 	return utf8::substr_count($haystack, $needle);
 }

@@ -480,7 +480,7 @@ function printGoogleMap($text = NULL, $id = NULL, $hide = NULL, $obj = NULL, $ca
 			?>
 			<script>
 			<?php
-			echo $map->output_js_contents;
+			echo js_encode($map->output_js_contents);
 			echo omsAdditions();
 			?>
 
@@ -489,7 +489,7 @@ function printGoogleMap($text = NULL, $id = NULL, $hide = NULL, $obj = NULL, $ca
 				}
 			</script>
 			<div id="<?php echo $id_data; ?>">
-				<?php echo $map->output_html; ?>
+				<?php echo html_encode($map->output_html); ?>
 			</div>
 			<?php
 			break;
@@ -498,7 +498,7 @@ function printGoogleMap($text = NULL, $id = NULL, $hide = NULL, $obj = NULL, $ca
 			?>
 			<script>
 			<?php
-			echo $map->output_js_contents;
+			echo js_encode($map->output_js_contents);
 			echo omsAdditions();
 			?>
 
@@ -524,7 +524,7 @@ function printGoogleMap($text = NULL, $id = NULL, $hide = NULL, $obj = NULL, $ca
 				<?php echo $text; ?>
 			</a>
 			<div id="<?php echo $id_data; ?>" class="hidden_map">
-				<?php echo $map->output_html; ?>
+				<?php echo html_encode($map->output_html); ?>
 			</div>
 			<?php
 			break;
