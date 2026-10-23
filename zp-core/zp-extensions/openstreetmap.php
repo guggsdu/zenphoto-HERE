@@ -18,7 +18,7 @@
  * @licence GPL v3 or later
  * @package zpcore\plugins\openstreetmap
  */
-$plugin_is_filter = 5 | THEME_PLUGIN;
+$plugin_is_filter = 5 | ADMIN_PLUGIN | THEME_PLUGIN;
 $plugin_description = gettext("A Zenphoto plugin for displaying OpenStreetMap based maps using LeafletJS for images or images from albums with embeded geodata.");
 $plugin_author = "Malte Müller (acrylian), Fred Sondaar (fretzl), gjr, Vincent Bourganel (vincent3569)";
 $plugin_notice = gettext('Privacy note: This plugin uses external third party sources');
@@ -26,6 +26,7 @@ $option_interface = 'openStreetMapOptions';
 $plugin_category = gettext('Misc');
 
 filter::registerFilter('theme_head', 'openStreetMap::scripts');
+filter::registerFilter('copy_object', 'openStreetMap::copyGpxTrack');
 
 class openStreetMapOptions {
 
@@ -653,6 +654,30 @@ class openStreetMap {
 			return NULL;
 		}
 		return ALBUM_FOLDER_WEBPATH . pathurlencode($album->name) . '/' . rawurlencode(basename($gpxfiles[0]));
+	}
+
+	/**
+	 * Filter for copying albums: also copies the *.gpx track file(s) located directly in the album folder to the new
+	 * album folder as these are not images or image sidecar files and thus not copied by the album copy itself.
+	 * Moving or renaming an album moves the whole folder so that needs no handling.
+	 *
+	 * @param bool|int $return Value passed through by the filter
+	 * @param object $obj The object being copied
+	 * @param array $new_unique_set Unique set of the copy, for albums with the key 'folder' (new album name)
+	 * @return bool|int
+	 */
+	static function copyGpxTrack($return, $obj, $new_unique_set = NULL) {
+		if ($return && is_array($new_unique_set) && !empty($new_unique_set['folder']) && AlbumBase::isAlbumClass($obj) && is_dir($obj->localpath)) {
+			$dest = ALBUM_FOLDER_SERVERPATH . internalToFilesystem($new_unique_set['folder']) . '/';
+			if (is_dir($dest)) {
+				foreach (safe_glob($obj->localpath . '*.gpx') as $gpxfile) {
+					if (@copy($gpxfile, $dest . basename($gpxfile))) {
+						@chmod($dest . basename($gpxfile), FILE_MOD);
+					}
+				}
+			}
+		}
+		return $return;
 	}
 
 	/**
