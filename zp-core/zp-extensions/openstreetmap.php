@@ -3,12 +3,16 @@
  * A Zenphoto plugin for showing OpenStreetMap maps using LeafletJS (http://leafletjs.com) for images or images from * 
  * albums with embeded geodata or maps with custom geodata.
  * 
+ * If a *.gpx file is located directly within an album's folder, its track is drawn on the album's map
+ * with a start (red pin) and finish (checkered flag) marker. If there are several, only the first one is used.
+ * 
  * Also includes 
  * 
  * - marker cluster plugin https://github.com/Leaflet/Leaflet.markercluster by Dave Leaver
  * - MousePosition plugin https://github.com/ardhi/Leaflet.MousePosition by Ardhi Lukianto
  * - Leaflet-MiniMap plugin: https://github.com/Norkart/Leaflet-MiniMap
  * - leaflet-providers plugin: https://github.com/leaflet-extras/leaflet-providers
+ * - leaflet-gpx plugin: https://github.com/mpetazzoni/leaflet-gpx by Pavel Shramov and Maxime Petazzoni
  * 
  * @author Malte Müller (acrylian), Fred Sondaar (fretzl), gjr, Vincent Bourganel (vincent3569)
  * @licence GPL v3 or later
@@ -302,6 +306,13 @@ class openStreetMap {
 	public $mapcenter = NULL;
 
 	/**
+	 * Web URL of a *.gpx track file found directly in the current album's folder, if any.
+	 * Only set if the map is shown in an album context (not for a single image without album markers).
+	 * @var string
+	 */
+	public $gpxfile = NULL;
+
+	/**
 	 * Unique number if using more than one map on a page
 	 * @var int
 	 */
@@ -494,6 +505,9 @@ class openStreetMap {
 				}
 			}
 		}
+		if (is_object($this->obj) && AlbumBase::isAlbumClass($this->obj)) {
+			$this->gpxfile = $this->getGpxTrackURL($this->obj);
+		}
 		$this->center = $this->getCenter();
 		$this->fitbounds = $this->getFitBounds();
 		$this->geodata = $this->getGeoData();
@@ -561,6 +575,7 @@ class openStreetMap {
 		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet.js"></script>
 		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet.markercluster.js"></script>
 		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet-providers.js"></script>
+		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet-gpx.js"></script>
 		<?php
 		if (getOption('osmap_showcursorpos')) {
 			?>
@@ -627,7 +642,21 @@ class openStreetMap {
 	}
 
 	/**
-	 * Extracts the geodata from an image or the images of an album 
+	 * Looks for a *.gpx track file directly within an album's folder and returns its web URL.
+	 * If several are found only the first one is used.
+	 * @param object $album Album object
+	 * @return string|NULL
+	 */
+	function getGpxTrackURL($album) {
+		$gpxfiles = safe_glob($album->localpath . '*.gpx');
+		if (empty($gpxfiles)) {
+			return NULL;
+		}
+		return ALBUM_FOLDER_WEBPATH . pathurlencode($album->name) . '/' . rawurlencode(basename($gpxfiles[0]));
+	}
+
+	/**
+	 * Extracts the geodata from an image or the images of an album
 	 * and creates the JS arrays for leaflet including title, description and thumb if set.
 	 * @return array
 	 */
@@ -800,15 +829,18 @@ class openStreetMap {
 			$class = ' class="' . $this->class . '"';
 		}
 		$geodataJS = $this->getGeoDataJS();
-		if (!empty($geodataJS) && !empty($this->center)) {
+		$hasGeodata = !empty($geodataJS) && !empty($this->center);
+		if ($hasGeodata || !empty($this->gpxfile)) {
 			?>
 			<div id="osm_map<?php echo $this->mapnumber; ?>"<?php echo $class; ?> style="width:<?php echo $this->width; ?>; height:<?php echo $this->height; ?>;"></div>
 			<script>
 				var geodata = new Array();
 			<?php echo $geodataJS; ?>
 				var map = L.map('osm_map<?php echo $this->mapnumber; ?>', {
+			<?php if ($hasGeodata) { ?>
 					center: [<?php echo $this->center[0]; ?>, <?php echo $this->center[1]; ?>],
 					zoom: <?php echo $this->zoom; ?>, //option
+			<?php } ?>
 					zoomControl: false, // disable so we can position it below
 					minZoom: <?php echo $this->minzoom; ?>,
 			<?php if (!empty($this->maxzoom)) { ?>
@@ -847,6 +879,34 @@ class openStreetMap {
 			if ($this->mode == 'cluster' && $this->fitbounds) {
 				?>
 					map.fitBounds([<?php echo $this->fitbounds; ?>]);
+				<?php
+			}
+			if (!empty($this->gpxfile)) {
+				?>
+					var gpxStartIcon = L.divIcon({
+						className: 'gpx-marker',
+						html: '<svg xmlns="http://www.w3.org/2000/svg" width="25" height="41" viewBox="0 0 25 41"><path d="M12.5 0.5C6 0.5 0.5 5.8 0.5 12.3c0 9 12 28 12 28s12-19 12-28C24.5 5.8 19 0.5 12.5 0.5z" fill="#d9232d" stroke="#8c1017"/><circle cx="12.5" cy="12.5" r="4.5" fill="#fff"/></svg>',
+						iconSize: [25, 41],
+						iconAnchor: [12, 41]
+					});
+					var gpxEndIcon = L.divIcon({
+						className: 'gpx-marker',
+						html: '<svg xmlns="http://www.w3.org/2000/svg" width="32" height="41" viewBox="0 0 32 41"><path d="M5 40V3" stroke="#333" stroke-width="3" stroke-linecap="round"/><rect x="6.5" y="3.5" width="22" height="14" fill="#fff"/><rect x="12.0" y="3.5" width="5.5" height="4.67" fill="#222"/><rect x="23.0" y="3.5" width="5.5" height="4.67" fill="#222"/><rect x="6.5" y="8.17" width="5.5" height="4.67" fill="#222"/><rect x="17.5" y="8.17" width="5.5" height="4.67" fill="#222"/><rect x="12.0" y="12.84" width="5.5" height="4.67" fill="#222"/><rect x="23.0" y="12.84" width="5.5" height="4.67" fill="#222"/><rect x="6.5" y="3.5" width="22" height="14" fill="none" stroke="#222"/></svg>',
+						iconSize: [32, 41],
+						iconAnchor: [5, 40]
+					});
+					var gpxTrack = new L.GPX("<?php echo js_encode($this->gpxfile); ?>", {
+						async: true,
+						gpx_options: {
+							parseElements: ['track']
+						},
+						marker_options: {
+							startIcon: gpxStartIcon,
+							endIcon: gpxEndIcon
+						}
+					}).on('loaded', function (e) {
+						map.fitBounds(e.target.getBounds());
+					}).addTo(map);
 				<?php
 			}
 			if ($this->showminimap) {
