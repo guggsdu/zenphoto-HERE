@@ -894,7 +894,7 @@ function getPrevAlbumURL() {
 function hasImages() {
 	if (getNumImages()) {
 		global $_zp_page;
-		$imagestart = getTotalPages(true); // # of album pages
+		$imagestart = (int) ceil(getNumAlbums() / max(1, getOption('albums_per_page'))); // # of album pages
 		if (!getFirstPageImages()) {
 			$imagestart++; // then images start on the last album page.
 		}
