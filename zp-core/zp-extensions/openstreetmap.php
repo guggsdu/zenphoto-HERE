@@ -3,7 +3,7 @@
  * A Zenphoto plugin for showing OpenStreetMap maps using LeafletJS (http://leafletjs.com) for images or images from * 
  * albums with embeded geodata or maps with custom geodata.
  * 
- * If a *.gpx file is located directly within an album's folder, its track is drawn on the album's map
+ * If the option to show GPX tracks is enabled and a *.gpx file is located directly within an album's folder, its track is drawn on the album's map
  * with a start (red pin) and finish (checkered flag) marker. If there are several, only the first one is used.
  * 
  * Also includes 
@@ -26,7 +26,9 @@ $option_interface = 'openStreetMapOptions';
 $plugin_category = gettext('Misc');
 
 filter::registerFilter('theme_head', 'openStreetMap::scripts');
-filter::registerFilter('copy_object', 'openStreetMap::copyGpxTrack');
+if (getOption('osmap_showgpxtrack')) {
+	filter::registerFilter('copy_object', 'openStreetMap::copyGpxTrack');
+}
 
 class openStreetMapOptions {
 
@@ -65,6 +67,7 @@ class openStreetMapOptions {
 		setOptionDefault('osmap_showscale', 1);
 		setOptionDefault('osmap_showalbummarkers', 0);
 		setOptionDefault('osmap_showminimap', 0);
+		setOptionDefault('osmap_showgpxtrack', 0);
 		setOptionDefault('osmap_minimap_width', 100);
 		setOptionDefault('osmap_minimap_height', 100);
 		setOptionDefault('osmap_minimap_zoom', -5);
@@ -202,6 +205,10 @@ class openStreetMapOptions {
 						'key' => 'osmap_showalbummarkers',
 						'type' => OPTION_TYPE_CHECKBOX,
 						'desc' => gettext("Enable if you want to show the map on the single image page not only the marker of the current image but all markers from the album. The current position will be highlighted.")),
+				gettext('Show GPX tracks') => array(
+						'key' => 'osmap_showgpxtrack',
+						'type' => OPTION_TYPE_CHECKBOX,
+						'desc' => gettext("Enable if you want to show the track of a *.gpx file located directly in an album folder on the map of that album. The gpx file is also copied if the album is copied. If several files are present only the first one is used.")),
 				gettext('Mini map') => array(
 						'key' => 'osmap_showminimap',
 						'type' => OPTION_TYPE_CHECKBOX,
@@ -506,7 +513,7 @@ class openStreetMap {
 				}
 			}
 		}
-		if (is_object($this->obj) && AlbumBase::isAlbumClass($this->obj)) {
+		if (getOption('osmap_showgpxtrack') && is_object($this->obj) && AlbumBase::isAlbumClass($this->obj)) {
 			$this->gpxfile = $this->getGpxTrackURL($this->obj);
 		}
 		$this->center = $this->getCenter();
@@ -576,8 +583,12 @@ class openStreetMap {
 		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet.js"></script>
 		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet.markercluster.js"></script>
 		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet-providers.js"></script>
-		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet-gpx.js"></script>
 		<?php
+		if (getOption('osmap_showgpxtrack')) {
+			?>
+		<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/leaflet-gpx.js"></script>
+			<?php
+		}
 		if (getOption('osmap_showcursorpos')) {
 			?>
 			<script src="<?php echo FULLWEBPATH . '/' . ZENFOLDER . '/' . PLUGIN_FOLDER; ?>/openstreetmap/L.Control.MousePosition.js"></script>
